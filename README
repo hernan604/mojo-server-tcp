@@ -13,6 +13,9 @@ SYNOPSIS
       $echo->start;
 
 DESCRIPTION
+    THIS MODULE WILL PROBABLY BREAK SINCE IT RELIES ON INTERNAL API OF
+    Mojo::Server::Prefork.
+
     Mojo::Server::TCP extends Mojo::Server::Prefork, so it has all the
     awesomeness you need for a full featured UNIX optimized TCP server.
 

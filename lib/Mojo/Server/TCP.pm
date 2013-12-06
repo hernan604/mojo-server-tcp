@@ -18,6 +18,9 @@ Mojo::Server::TCP - Generic TCP server based on Mojo::Server::Prefork
 
 =head1 DESCRIPTION
 
+THIS MODULE WILL PROBABLY BREAK SINCE IT RELIES ON INTERNAL API OF
+L<Mojo::Server::Prefork>.
+
 L<Mojo::Server::TCP> extends L<Mojo::Server::Prefork>, so it has all the
 awesomeness you need for a full featured UNIX optimized TCP server.
 
