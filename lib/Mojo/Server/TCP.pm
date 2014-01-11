@@ -2,7 +2,7 @@ package Mojo::Server::TCP;
 
 =head1 NAME
 
-Mojo::Server::TCP - Generic TCP server based on Mojo::Server::Prefork
+Mojo::Server::TCP - Generic TCP server
 
 =head1 SYNOPSIS
 
@@ -18,53 +18,151 @@ Mojo::Server::TCP - Generic TCP server based on Mojo::Server::Prefork
 
 =head1 DESCRIPTION
 
-THIS MODULE WILL PROBABLY BREAK SINCE IT RELIES ON INTERNAL API OF
-L<Mojo::Server::Prefork>.
-
-L<Mojo::Server::TCP> extends L<Mojo::Server::Prefork>, so it has all the
-awesomeness you need for a full featured UNIX optimized TCP server.
-
-For better scalability (epoll, kqueue) and to provide IPv6 as well as TLS
-support, the optional modules L<EV>, L<IO::Socket::IP> and L<IO::Socket::SSL>
-will be used automatically by L<Mojo::IOLoop> if they are installed.
-
-See L<Mojo::Server::TCP/DESCRIPTION> for more details.
+L<Mojo::Server::TCP> is a generic TCP server based on the logic of
+the L<Mojo::Server::Daemon>.
 
 =cut
 
-use Mojo::Base 'Mojo::Server::Prefork';
+use Mojo::Base 'Mojo::EventEmitter';
+use Mojo::Loader;
+use Mojo::URL;
 use constant DEBUG => $ENV{MOJO_SERVER_DEBUG} ? 1 : 0;
-
-=head1 ATTRIBUTES
-
-=head2 app
-
-Holds a L<Mojo> object.
-
-=cut
-
-has app => sub {
-  require Mojo::Base;
-  Mojo->new;
-};
 
 =head1 EVENTS
 
+=head2 close
+
+  $self->on(close => sub { my($self, $stream) = @_ });
+
+Emitted safely if the stream gets closed.
+
+=head2 error
+
+  $self->on(error => sub { my($self, $stream, $str) = @_ });
+
 =head2 read
 
-  $self->read($stream, $chunk);
+  $self->on(error => sub { my($self, $stream, $chunk) = @_ });
 
-Emitted when new data is received over the wire.
+Emitted safely if new data arrives on the stream.
+
+=head2 timeout
+
+  $self->on(timeout => sub { my($self, $stream) = @_ });
+
+Emitted safely if the stream has been inactive for too long and will get
+closed automatically.
+
+=head1 ATTRIBUTES
+
+=head2 daemon_class
+
+=head2 listen
+
+  my $listen = $daemon->listen;
+  $daemon    = $daemon->listen(['tcp://localhost:3000']);
+
+List of one or more locations to listen on, defaults to "tcp://*:3000".
 
 =cut
 
-sub _read {
-  my ($self, $id, $chunk) = @_;
+has daemon_class => 'Mojo::Server::Daemon';
+has listen => sub { ['tcp://*:3000']; };
+has _server => sub {
+  my $self = shift;
+  my $e = Mojo::Loader->new->load($self->daemon_class);
+  
+  $e and die $e;
+  $self->daemon_class->new(listen => []);
+};
 
-  return unless my $c = $self->{connections}{$id};
-  $c->{stream} ||= $self->ioloop->stream($id);
-  warn "-- Server <<< Client (@{[$c->{stream}->handle->peerhost]})\n$chunk\n" if DEBUG;
-  $self->emit(read => $c->{stream}, $chunk);
+=head1 METHODS
+
+=head2 run
+
+  $self = $self->run;
+
+Start accepting connections and run the server.
+
+=cut
+
+sub run {
+  my $self = shift;
+
+  local $SIG{INT} = local $SIG{TERM} = sub { $self->_server->ioloop->stop };
+  $self->start->_server->setuidgid->ioloop->start;
+  $self;
+}
+
+=head2 start
+
+  $self = $self->start;
+
+Start listening for connections. See also L</run>.
+
+=cut
+
+sub start {
+  my $self = shift;
+
+  if(!$self->{acceptors}) {
+    $self->_listen($_) for @{ $self->listen };
+  }
+  if($self->{acceptors}) {
+    $self->_server->acceptors($self->{acceptors});
+  }
+
+  $self->_server->start;
+  $self;
+}
+
+=head2 stop
+
+  $self = $self->stop;
+
+Stop the server.
+
+=cut
+
+sub stop {
+  my $self = shift;
+
+  $self->_server->stop;
+  $self;
+}
+
+sub _listen {
+  my $self   = shift;
+  my $url    = Mojo::URL->new(shift);
+  my $query  = $url->query;
+  my $verify = $query->param('verify');
+  my($options, $tls);
+
+  $options = {
+    address => $url->host,
+    backlog => $self->_server->backlog,
+    port    => $url->port,
+    reuse   => scalar $query->param('reuse'),
+  };
+
+  $options->{"tls_$_"} = scalar $query->param($_) for qw(ca cert ciphers key);
+  $options->{tls_verify} = hex $verify if defined $verify;
+  delete $options->{address} if $options->{address} eq '*';
+  $tls = $options->{tls} = $url->protocol eq 'tcps';
+ 
+  Scalar::Util::weaken($self);
+  push @{$self->{acceptors}}, $self->_server->ioloop->server(
+    $options => sub {
+      my ($loop, $stream, $id) = @_;
+ 
+      warn "-- Accept (@{[$stream->handle->peerhost]})\n" if DEBUG;
+      $stream->timeout($self->_server->inactivity_timeout);
+      $stream->on(close => sub { $self->emit(close => @_); });
+      $stream->on(error => sub { $self and $self->emit(error => @_); });
+      $stream->on(read => sub { $self->emit(read => @_); });
+      $stream->on(timeout => sub { $self->emit(timeout => @_); });
+    }
+  );
 }
 
 =head1 AUTHOR
