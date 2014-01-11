@@ -37,10 +37,16 @@ EVENTS
     closed automatically.
 
 ATTRIBUTES
-  daemon_class
+  server_class
+      $str = $daemon->server_class;
+      $self = $self->server_class('Mojo::Server::Prefork');
+
+    Used to set a custom server class. The default is Mojo::Server::Daemon.
+    Check out Mojo::Server::Prefork if you want a faster server.
+
   listen
-      my $listen = $daemon->listen;
-      $daemon    = $daemon->listen(['tcp://localhost:3000']);
+      $listen = $self->listen;
+      $self = $self->listen(['tcp://localhost:3000']);
 
     List of one or more locations to listen on, defaults to "tcp://*:3000".
 

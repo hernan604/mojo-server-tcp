@@ -55,25 +55,31 @@ closed automatically.
 
 =head1 ATTRIBUTES
 
-=head2 daemon_class
+=head2 server_class
+
+  $str = $daemon->server_class;
+  $self = $self->server_class('Mojo::Server::Prefork');
+
+Used to set a custom server class. The default is L<Mojo::Server::Daemon>.
+Check out L<Mojo::Server::Prefork> if you want a faster server.
 
 =head2 listen
 
-  my $listen = $daemon->listen;
-  $daemon    = $daemon->listen(['tcp://localhost:3000']);
+  $listen = $self->listen;
+  $self = $self->listen(['tcp://localhost:3000']);
 
 List of one or more locations to listen on, defaults to "tcp://*:3000".
 
 =cut
 
-has daemon_class => 'Mojo::Server::Daemon';
+has server_class => 'Mojo::Server::Daemon';
 has listen => sub { ['tcp://*:3000']; };
 has _server => sub {
   my $self = shift;
-  my $e = Mojo::Loader->new->load($self->daemon_class);
+  my $e = Mojo::Loader->new->load($self->server_class);
   
   $e and die $e;
-  $self->daemon_class->new(listen => []);
+  $self->server_class->new(listen => []);
 };
 
 =head1 METHODS
