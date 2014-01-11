@@ -30,6 +30,12 @@ use constant DEBUG => $ENV{MOJO_SERVER_DEBUG} ? 1 : 0;
 
 =head1 EVENTS
 
+=head2 connect
+
+  $self->on(close => sub { my($self, $stream) = @_ });
+
+Emitted safely when a new client connects to the server.
+
 =head2 close
 
   $self->on(close => sub { my($self, $stream) = @_ });
@@ -160,13 +166,15 @@ sub _listen {
   push @{$self->{acceptors}}, $self->_server->ioloop->server(
     $options => sub {
       my ($loop, $stream, $id) = @_;
+
+      $self->emit_safe(connect => $stream, $id);
  
       warn "-- Accept (@{[$stream->handle->peerhost]})\n" if DEBUG;
       $stream->timeout($self->_server->inactivity_timeout);
-      $stream->on(close => sub { $self->emit(close => @_); });
-      $stream->on(error => sub { $self and $self->emit(error => @_); });
-      $stream->on(read => sub { $self->emit(read => @_); });
-      $stream->on(timeout => sub { $self->emit(timeout => @_); });
+      $stream->on(close => sub { $self->emit_safe(close => @_); });
+      $stream->on(error => sub { $self and $self->emit_safe(error => @_); });
+      $stream->on(read => sub { $self->emit_safe(read => @_); });
+      $stream->on(timeout => sub { $self->emit_safe(timeout => @_); });
     }
   );
 }
