@@ -10,7 +10,7 @@ Mojo::Server::TCP - Generic TCP server
   my $echo = Mojo::Server::TCP->new(listen => ['tcp//*:9000']);
 
   $echo->on(read => sub {
-    my($echo, $stream, $chunk) = @_;
+    my($echo, $id, $chunk, $stream) = @_;
     $stream->write($chunk);
   });
 
@@ -32,23 +32,23 @@ use constant DEBUG => $ENV{MOJO_SERVER_DEBUG} ? 1 : 0;
 
 =head2 connect
 
-  $self->on(close => sub { my($self, $stream) = @_ });
+  $self->on(close => sub { my($self, $id) = @_ });
 
 Emitted safely when a new client connects to the server.
 
 =head2 close
 
-  $self->on(close => sub { my($self, $stream) = @_ });
+  $self->on(close => sub { my($self, $id) = @_ });
 
 Emitted safely if the stream gets closed.
 
 =head2 error
 
-  $self->on(error => sub { my($self, $stream, $str) = @_ });
+  $self->on(error => sub { my($self, $id, $str) = @_ });
 
 =head2 read
 
-  $self->on(error => sub { my($self, $stream, $chunk) = @_ });
+  $self->on(error => sub { my($self, $id, $chunk, $stream) = @_ });
 
 Emitted safely if new data arrives on the stream.
 
@@ -167,14 +167,14 @@ sub _listen {
     $options => sub {
       my ($loop, $stream, $id) = @_;
 
-      $self->emit_safe(connect => $stream, $id);
+      $self->emit_safe(connect => $id);
  
       warn "-- Accept (@{[$stream->handle->peerhost]})\n" if DEBUG;
       $stream->timeout($self->_server->inactivity_timeout);
-      $stream->on(close => sub { $self->emit_safe(close => @_); });
-      $stream->on(error => sub { $self and $self->emit_safe(error => @_); });
-      $stream->on(read => sub { $self->emit_safe(read => @_); });
-      $stream->on(timeout => sub { $self->emit_safe(timeout => @_); });
+      $stream->on(close => sub { $self->emit_safe(close => $id); });
+      $stream->on(error => sub { $self and $self->emit_safe(error => $id, $_[1]); });
+      $stream->on(read => sub { $self->emit_safe(read => $id, $_[1], $_[0]); });
+      $stream->on(timeout => sub { $self->emit_safe(timeout => $id); });
     }
   );
 }

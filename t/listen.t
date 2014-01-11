@@ -18,9 +18,10 @@ my($id, $tcp);
 }
 
 {
-  my(@event, @sig);
-  $tcp->on(close => sub { push @event, @_; Mojo::IOLoop->stop });
-  $tcp->on(read => sub { push @event, @_; });
+  my(@event, @sig, $id);
+  $tcp->on(connect => sub { push @event, connect => @_; });
+  $tcp->on(close => sub { push @event, close => @_; Mojo::IOLoop->stop });
+  $tcp->on(read => sub { push @event, read => @_; });
 
   Mojo::IOLoop->client(
     { port => $port },
@@ -35,11 +36,20 @@ my($id, $tcp);
   Mojo::IOLoop->timer(2 => sub { Mojo::IOLoop->stop; });
   $tcp->run;
 
-  is $event[0], $tcp, 'event.0 = tcp';
-  isa_ok $event[1], 'Mojo::IOLoop::Stream', 'event.1 = stream';
-  is $event[2], "too cool o/ æøå!", 'event.2 = chunk';
-  is $event[3], $tcp, 'event.3 = tcp';
-  isa_ok $event[4], 'Mojo::IOLoop::Stream', 'event.4 = stream';
+  is shift(@event), 'connect', 'connect event';
+  is shift(@event), $tcp, 'connect: tcp';
+  $id = shift @event;
+  like $id, qr{^\w+$}, 'connect: id';
+
+  is shift(@event), 'read', 'read event';
+  is shift(@event), $tcp, 'read: tcp';
+  is shift(@event), $id, 'read: id';
+  is shift(@event), "too cool o/ æøå!", 'read: chunk';
+  isa_ok shift(@event), 'Mojo::IOLoop::Stream', 'read: stream';
+
+  is shift(@event), 'close', 'close event';
+  is shift(@event), $tcp, 'close: tcp';
+  is shift(@event), $id, 'read: id';
 
   is int(grep { $_ } @sig), 2, 'INT and TERM set up';
 
