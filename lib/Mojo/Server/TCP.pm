@@ -65,7 +65,7 @@ Check out L<Mojo::Server::Prefork> if you want a faster server.
 
 =head2 listen
 
-  $listen = $self->listen;
+  $array_ref = $self->listen;
   $self = $self->listen(['tcp://localhost:3000']);
 
 List of one or more locations to listen on, defaults to "tcp://*:3000".
