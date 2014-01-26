@@ -1,5 +1,5 @@
 NAME
-    Mojo::Server::TCP - Generic TCP server based on Mojo::Server::Prefork
+    Mojo::Server::TCP - Generic TCP server
 
 SYNOPSIS
       use Mojo::Server::TCP;
@@ -13,27 +13,58 @@ SYNOPSIS
       $echo->start;
 
 DESCRIPTION
-    THIS MODULE WILL PROBABLY BREAK SINCE IT RELIES ON INTERNAL API OF
-    Mojo::Server::Prefork.
-
-    Mojo::Server::TCP extends Mojo::Server::Prefork, so it has all the
-    awesomeness you need for a full featured UNIX optimized TCP server.
-
-    For better scalability (epoll, kqueue) and to provide IPv6 as well as
-    TLS support, the optional modules EV, IO::Socket::IP and IO::Socket::SSL
-    will be used automatically by Mojo::IOLoop if they are installed.
-
-    See "DESCRIPTION" in Mojo::Server::TCP for more details.
-
-ATTRIBUTES
-  app
-    Holds a Mojo object.
+    Mojo::Server::TCP is a generic TCP server based on the logic of the
+    Mojo::Server::Daemon.
 
 EVENTS
-  read
-      $self->read($stream, $chunk);
+  close
+      $self->on(close => sub { my($self, $stream) = @_ });
 
-    Emitted when new data is received over the wire.
+    Emitted safely if the stream gets closed.
+
+  error
+      $self->on(error => sub { my($self, $stream, $str) = @_ });
+
+  read
+      $self->on(error => sub { my($self, $stream, $chunk) = @_ });
+
+    Emitted safely if new data arrives on the stream.
+
+  timeout
+      $self->on(timeout => sub { my($self, $stream) = @_ });
+
+    Emitted safely if the stream has been inactive for too long and will get
+    closed automatically.
+
+ATTRIBUTES
+  server_class
+      $str = $daemon->server_class;
+      $self = $self->server_class('Mojo::Server::Prefork');
+
+    Used to set a custom server class. The default is Mojo::Server::Daemon.
+    Check out Mojo::Server::Prefork if you want a faster server.
+
+  listen
+      $listen = $self->listen;
+      $self = $self->listen(['tcp://localhost:3000']);
+
+    List of one or more locations to listen on, defaults to "tcp://*:3000".
+
+METHODS
+  run
+      $self = $self->run;
+
+    Start accepting connections and run the server.
+
+  start
+      $self = $self->start;
+
+    Start listening for connections. See also "run".
+
+  stop
+      $self = $self->stop;
+
+    Stop the server.
 
 AUTHOR
     Jan Henning Thorsen - "jhthorsen@cpan.org"
