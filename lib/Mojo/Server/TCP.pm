@@ -4,6 +4,10 @@ package Mojo::Server::TCP;
 
 Mojo::Server::TCP - Generic TCP server
 
+=head1 VERSION
+
+0.01
+
 =head1 SYNOPSIS
 
   use Mojo::Server::TCP;
@@ -27,6 +31,8 @@ use Mojo::Base 'Mojo::EventEmitter';
 use Mojo::Loader;
 use Mojo::URL;
 use constant DEBUG => $ENV{MOJO_SERVER_DEBUG} ? 1 : 0;
+
+our $VERSION = '0.01';
 
 =head1 EVENTS
 
