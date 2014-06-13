@@ -7,4 +7,5 @@
 ^Makefile$
 ^MANIFEST.*
 ^MYMETA.*
+^README.pod
 ^Mojo-Server-TCP
