@@ -1,5 +1,8 @@
 Revision history for Mojo-Server-TCP
 
+0.03
+       * Improved documentation
+
 0.0201   Sat Feb 22 10:03:23 2014
        * Try to fix failing t/listen.t test
 
