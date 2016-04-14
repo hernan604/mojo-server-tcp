@@ -132,7 +132,7 @@ sub run {
   my $self = shift;
 
   local $SIG{INT} = local $SIG{TERM} = sub { $self->_server->ioloop->stop };
-  $self->start->_server->setuidgid->ioloop->start;
+  $self->start->_server->ioloop->start;
   $self;
 }
 
