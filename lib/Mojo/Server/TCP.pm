@@ -28,7 +28,7 @@ the L<Mojo::Server::Daemon>.
 =cut
 
 use Mojo::Base 'Mojo::EventEmitter';
-use Mojo::Loader;
+use Mojo::Loader 'load_class';
 use Mojo::URL;
 use constant DEBUG => $ENV{MOJO_SERVER_DEBUG} ? 1 : 0;
 
@@ -112,8 +112,8 @@ has listen => sub { ['tcp://*:3000']; };
 has server_class => 'Mojo::Server::Daemon';
 has _server => sub {
   my $self = shift;
-  my $e = Mojo::Loader->new->load($self->server_class);
-  
+  my $e = load_class($self->server_class);
+
   $e and die $e;
   $self->server_class->new(listen => []);
 };
@@ -191,14 +191,14 @@ sub _listen {
   $options->{tls_verify} = hex $verify if defined $verify;
   delete $options->{address} if $options->{address} eq '*';
   $tls = $options->{tls} = $url->protocol eq 'tcps';
- 
+
   Scalar::Util::weaken($self);
   push @{$self->{acceptors}}, $self->_server->ioloop->server(
     $options => sub {
       my ($loop, $stream, $id) = @_;
 
       $self->emit(connect => $id);
- 
+
       warn "-- Accept (@{[$stream->handle->peerhost]})\n" if DEBUG;
       $stream->timeout($self->_server->inactivity_timeout);
       $stream->on(close => sub { $self->emit(close => $id); });
